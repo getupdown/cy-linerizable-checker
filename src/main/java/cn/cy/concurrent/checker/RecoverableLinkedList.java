@@ -5,7 +5,7 @@ import java.util.Iterator;
 import com.google.common.base.Preconditions;
 
 /**
- * 可恢复的双向链表(带头节点)
+ * 可恢复的双向链表(带头,尾节点)
  */
 public class RecoverableLinkedList<T> implements Iterable<RecoverableLinkedList.Node> {
 
@@ -38,7 +38,7 @@ public class RecoverableLinkedList<T> implements Iterable<RecoverableLinkedList.
     private Node<T> head;
 
     /**
-     * 尾节点
+     * 尾节点,也不包含任何数据
      */
     private Node<T> tail;
 
@@ -49,6 +49,11 @@ public class RecoverableLinkedList<T> implements Iterable<RecoverableLinkedList.
 
     public RecoverableLinkedList() {
         this.head = new Node<>(null, null, null);
+        this.tail = new Node<>(null, null, null);
+
+        this.head.next = tail;
+        this.tail.prev = head;
+
         this.size = 0;
     }
 
@@ -58,20 +63,18 @@ public class RecoverableLinkedList<T> implements Iterable<RecoverableLinkedList.
      * @param data
      */
     public void add(T data) {
-
-        if (tail == null) {
-            tail = new Node<>(data, head, null);
-            head.next = tail;
-            size++;
-        } else {
-            tail.next = new Node<>(data, tail, null);
-            tail = tail.next;
-            size++;
-        }
+        Node node = new Node(data, tail.prev, tail);
+        tail.prev.next = node;
+        tail.prev = node;
+        size++;
     }
 
     private Node<T> getHead() {
         return head;
+    }
+
+    private Node<T> getTail() {
+        return tail;
     }
 
     /**
@@ -134,12 +137,15 @@ public class RecoverableLinkedList<T> implements Iterable<RecoverableLinkedList.
      * @param cnt
      */
     public void removeFromTail(Integer cnt) {
+
+        Node now = tail.prev;
         for (int i = 0; i < cnt; i++) {
-            tail = tail.prev;
+            now = now.prev;
         }
 
         // help gc
-        tail.next = null;
+        now.next = tail;
+        tail.prev = now;
         size -= cnt;
     }
 
@@ -157,19 +163,16 @@ public class RecoverableLinkedList<T> implements Iterable<RecoverableLinkedList.
 
         private Node now;
 
-        private boolean isFirst;
-
         public NodeIterator(RecoverableLinkedList bindList) {
             Preconditions.checkNotNull(bindList);
             this.bindList = bindList;
             this.now = bindList.getHead();
-            this.isFirst = true;
         }
 
         @Override
         public boolean hasNext() {
             now = now.next;
-            return now != null;
+            return now != bindList.getTail();
         }
 
         @Override
@@ -184,7 +187,7 @@ public class RecoverableLinkedList<T> implements Iterable<RecoverableLinkedList.
     public String toString() {
         String res = "";
         Node now = head.next;
-        while (now != null) {
+        while (now != tail) {
             res = res + now.data + " ";
             now = now.next;
         }
