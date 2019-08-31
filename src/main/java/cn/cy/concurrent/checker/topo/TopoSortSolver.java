@@ -59,9 +59,8 @@ public class TopoSortSolver {
 
     /**
      * 枚举所有拓扑排序的序列
-     * 使用Set代替queue, 因为一个queue当中, 其实任何一个元素都可以被poll出来
      */
-    public void enumerateAllTopoSort() {
+    public List<List<Integer>> enumerateAllTopoSort() {
 
         RecoverableLinkedList<Integer> queue = new RecoverableLinkedList<>();
 
@@ -71,8 +70,10 @@ public class TopoSortSolver {
             }
         }
 
-        dfs(queue, Lists.newArrayList(), Sets.newHashSet());
+        List<List<Integer>> allPerm = Lists.newArrayList();
+        dfs(queue, Lists.newArrayList(), Sets.newHashSet(), allPerm);
 
+        return allPerm;
     }
 
     /**
@@ -81,11 +82,12 @@ public class TopoSortSolver {
      * @param visited 以访问过的
      */
     @SuppressWarnings("unchecked")
-    public void dfs(RecoverableLinkedList<Integer> queue, List<Integer> perm, Set<Integer> visited) {
+    public void dfs(RecoverableLinkedList<Integer> queue, List<Integer> perm, Set<Integer> visited,
+                    List<List<Integer>> allPerm) {
 
         if (visited.size() == graphSize) {
-            //finish
-            System.out.println(perm);
+            // finish
+            allPerm.add(Lists.newArrayList(perm));
             return;
         }
 
@@ -93,18 +95,21 @@ public class TopoSortSolver {
         for (RecoverableLinkedList.Node<Integer> e : queue) {
             List<Integer> targetNodes = lift(e, visited, queue, perm);
 
-            dfs(queue, perm, visited);
+            dfs(queue, perm, visited, allPerm);
 
             unlift(e, visited, queue, perm, targetNodes);
         }
     }
 
     /**
-     * 从队列中取出节点x
+     * 从队列中取出now节点
      *
-     * @param x
+     * @param now
+     * @param visited
+     * @param queue
+     * @param perm
      *
-     * @return 节点x连着的所有节点, 用于恢复现场
+     * @return
      */
     public List<Integer> lift(RecoverableLinkedList.Node<Integer> now, Set<Integer> visited,
                               RecoverableLinkedList<Integer> queue,
