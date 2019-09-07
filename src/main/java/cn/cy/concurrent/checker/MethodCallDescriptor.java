@@ -42,4 +42,16 @@ public class MethodCallDescriptor {
     public Long getEndTime() {
         return endTime;
     }
+
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public List<Object> getInputArgs() {
+        return inputArgs;
+    }
+
+    public Object getRetVal() {
+        return retVal;
+    }
 }
