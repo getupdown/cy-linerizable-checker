@@ -20,7 +20,7 @@ public class TopoSortBasedChecker {
 
     private ConcurrentLinkedQueue<MethodCallDescriptor> mcdList = new ConcurrentLinkedQueue<>();
 
-    private ThreadLocal<MethodCallDescriptor> localmcd;
+    private ThreadLocal<MethodCallDescriptor> localmcd = new ThreadLocal<>();
 
     private SingleThreadImplChecker singleThreadImplChecker;
 
@@ -66,7 +66,7 @@ public class TopoSortBasedChecker {
      *
      * @return
      */
-    private boolean check() {
+    public boolean check() {
         // 标号
         int x = 0;
         Map<Integer, MethodCallDescriptor> methodCallDescriptorMap = Maps.newHashMap();

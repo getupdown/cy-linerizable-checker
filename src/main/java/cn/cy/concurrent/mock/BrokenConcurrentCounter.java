@@ -9,20 +9,30 @@ public class BrokenConcurrentCounter {
 
     private TopoSortBasedChecker topoSortBasedChecker;
 
-    private Integer cnt = 0;
+    public BrokenConcurrentCounter(TopoSortBasedChecker topoSortBasedChecker) {
+        this.topoSortBasedChecker = topoSortBasedChecker;
+    }
+
+    private volatile Integer cnt = 0;
 
     public void add() {
-        topoSortBasedChecker.startRecord("add", null);
+        topoSortBasedChecker.startRecord("add", new Object[] {});
         cnt++;
-        topoSortBasedChecker.endRecord(Void.TYPE);
+        topoSortBasedChecker.endRecord(null);
     }
 
     public int get() {
+        int res = 0;
         try {
-            topoSortBasedChecker.startRecord("get", null);
-            return cnt;
+            topoSortBasedChecker.startRecord("get", new Object[] {});
+            res = cnt;
+            return res;
         } finally {
-            topoSortBasedChecker.endRecord(cnt);
+            topoSortBasedChecker.endRecord(res);
         }
+    }
+
+    public boolean checkRes() {
+        return topoSortBasedChecker.check();
     }
 }
