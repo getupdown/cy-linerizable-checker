@@ -4,8 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * @author shixingying
- * @version 2019-09-27 00:15
+ * 多线程debugger
  */
 public class MultiThreadDebugger {
 
