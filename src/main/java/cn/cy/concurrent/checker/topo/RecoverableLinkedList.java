@@ -193,4 +193,8 @@ public class RecoverableLinkedList<T> implements Iterable<RecoverableLinkedList.
         }
         return res;
     }
+
+    public boolean isEmpty() {
+        return size == 0;
+    }
 }

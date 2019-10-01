@@ -2,12 +2,10 @@ package cn.cy.concurrent.checker.topo;
 
 import java.util.List;
 import java.util.Queue;
-import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 /**
  * 拓扑排序
@@ -71,21 +69,20 @@ public class TopoSortSolver {
         }
 
         List<List<Integer>> allPerm = Lists.newArrayList();
-        dfs(queue, Lists.newArrayList(), Sets.newHashSet(), allPerm);
+        dfs(queue, Lists.newArrayList(), allPerm);
 
         return allPerm;
     }
 
     /**
-     * @param queue   队列状态
-     * @param perm    排列
-     * @param visited 以访问过的
+     * @param queue 队列状态
+     * @param perm  排列
      */
     @SuppressWarnings("unchecked")
-    public void dfs(RecoverableLinkedList<Integer> queue, List<Integer> perm, Set<Integer> visited,
+    public void dfs(RecoverableLinkedList<Integer> queue, List<Integer> perm,
                     List<List<Integer>> allPerm) {
 
-        if (visited.size() == graphSize) {
+        if (queue.isEmpty()) {
             // finish
             allPerm.add(Lists.newArrayList(perm));
             return;
@@ -93,11 +90,11 @@ public class TopoSortSolver {
 
         // 随机从"队列"里取出一个元素
         for (RecoverableLinkedList.Node<Integer> e : queue) {
-            List<Integer> targetNodes = lift(e, visited, queue, perm);
+            List<Integer> targetNodes = lift(e, queue, perm);
 
-            dfs(queue, perm, visited, allPerm);
+            dfs(queue, perm, allPerm);
 
-            unlift(e, visited, queue, perm, targetNodes);
+            unlift(e, queue, perm, targetNodes);
         }
     }
 
@@ -105,19 +102,17 @@ public class TopoSortSolver {
      * 从队列中取出now节点
      *
      * @param now
-     * @param visited
      * @param queue
      * @param perm
      *
      * @return
      */
-    public List<Integer> lift(RecoverableLinkedList.Node<Integer> now, Set<Integer> visited,
+    public List<Integer> lift(RecoverableLinkedList.Node<Integer> now,
                               RecoverableLinkedList<Integer> queue,
                               List<Integer> perm) {
 
         Integer x = now.getData();
 
-        visited.add(x);
         perm.add(x);
 
         List<Integer> nodes = Lists.newArrayList();
@@ -142,20 +137,16 @@ public class TopoSortSolver {
      * 恢复现场
      *
      * @param linkNode
-     * @param visited
      * @param queue
      * @param perm
      * @param targetNode
      */
     public void unlift(RecoverableLinkedList.Node<Integer> linkNode,
-                       Set<Integer> visited,
                        RecoverableLinkedList<Integer> queue,
                        List<Integer> perm,
                        List<Integer> targetNode) {
 
         Integer x = linkNode.getData();
-
-        visited.remove(x);
 
         Preconditions.checkState(perm.get(perm.size() - 1).equals(x));
         perm.remove(perm.size() - 1);

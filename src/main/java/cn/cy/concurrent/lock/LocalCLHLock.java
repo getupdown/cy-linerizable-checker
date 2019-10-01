@@ -5,11 +5,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.LockSupport;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import cn.cy.concurrent.debugger.MultiThreadDebugger;
 
 /**
- * 本地clh锁
+ * 本地clh锁,不可重入
  */
 public class LocalCLHLock implements Lock {
+
+    private static final Logger logger = LoggerFactory.getLogger(LocalCLHLock.class);
 
     private ThreadLocal<Node> threadLocal = new ThreadLocal<>();
 
@@ -17,10 +25,31 @@ public class LocalCLHLock implements Lock {
 
     private static class Node {
         private volatile Node pred;
-        private final Object syncObject = new Object();
+        private volatile Node next;
+        private volatile AtomicReference<NodeStatus> status = new AtomicReference<>(NodeStatus.INIT);
+        private final Thread holdThread = Thread.currentThread();
+        private final Long threadId = Thread.currentThread().getId();
 
         public Node(Node pred) {
             this.pred = pred;
+        }
+
+        public void setNext(Node next) {
+            this.next = next;
+        }
+
+        private enum NodeStatus {
+            INIT,
+            RELEASED,
+            HOLDING,
+            HOLDING_NEED_UNPARK,
+            PENDING,
+            PENDING_NEED_UNPARK
+        }
+
+        @Override
+        public String toString() {
+            return "Node {" + threadId + "}";
         }
     }
 
@@ -32,13 +61,14 @@ public class LocalCLHLock implements Lock {
         return clhTail.get();
     }
 
-    private Node tryGetFromThreadLocal(Node pred) {
+    private Node tryResolveFromThreadLocal() {
         Node trNode = threadLocal.get();
         if (!Objects.isNull(trNode)) {
-            trNode.pred = pred;
             return trNode;
         } else {
-            return new Node(pred);
+            Node n = new Node(null);
+            threadLocal.set(n);
+            return n;
         }
     }
 
@@ -50,30 +80,74 @@ public class LocalCLHLock implements Lock {
         Node now = null;
         // 1. 增加节点进入链表
         for (; ; ) {
-            Node tail = getTail();
-            now = tryGetFromThreadLocal(tail);
+
+            Node preTail = getTail();
+            now = tryResolveFromThreadLocal();
 
             // cas tail
-            if (!clhTail.compareAndSet(tail, now)) {
+            if (!clhTail.compareAndSet(preTail, now)) {
                 continue;
             }
-            threadLocal.set(now);
+
+            now.pred = preTail;
+            if (preTail != null) {
+                preTail.next = now;
+            }
+
+            MultiThreadDebugger.log("add into queue, preTail is : {}", preTail);
+
+            checkState(now.status.compareAndSet(Node.NodeStatus.INIT, Node.NodeStatus.PENDING));
+
             break;
         }
 
-        /*
-        在《多处理器编程的艺术》上给的CLHLock算法, 是用一个循环空转, 来判断前置节点的状态
-        这样做会让cpu空转, 如果等待队列很长的话, 会有大量的线程切换
-        这里试图用线程阻塞的方式搞一下
-         */
-        // 2. 加入链表之后, 检查前置节点
-        Node pred = now.pred;
-        if (Objects.isNull(pred)) {
-            // 如果前置是空, 说明他目前是队列首部, 拿到锁了
-        } else {
-            // 检查前置的状态
-            
+        // 自旋判断
+        while (true) {
+            Node pred = now.pred;
+            MultiThreadDebugger.log("self spin , pred is {}, status : {}", pred);
+            if (pred == null) {
+                // 直接拿锁
+                acquireLock0(now);
+                MultiThreadDebugger.log("acquire lock :x0!");
+                break;
+            } else {
+                // 查看前置状态
+                if (pred.status.compareAndSet(Node.NodeStatus.HOLDING, Node.NodeStatus.HOLDING_NEED_UNPARK)
+                        || pred.status.compareAndSet(Node.NodeStatus.PENDING, Node.NodeStatus.PENDING_NEED_UNPARK)) {
+                    // 这时候就可以park了
+                    // 得益于lockSupport的灵活性, 即: park和unpark顺序可以任意, 不会导致这里永远阻塞
+                    // 所以直接调用就行了
+                    MultiThreadDebugger.log("going to park status!");
+                    LockSupport.park();
+
+                    // 获取锁
+                    acquireLock0(now);
+
+                    MultiThreadDebugger.log("acquire lock :x1!");
+                    break;
+                } else if (pred.status.get().equals(Node.NodeStatus.RELEASED)) {
+                    // 不再复用同一节点, 降低复杂度
+                    // 获取锁
+                    acquireLock0(now);
+
+                    MultiThreadDebugger.log("acquire lock :x2!");
+                    break;
+                }
+            }
         }
+    }
+
+    private void checkState(boolean res) {
+        if (!res) {
+            MultiThreadDebugger.error("should not happen!");
+        }
+    }
+
+    private void acquireLock0(Node now) {
+        // 获取锁
+        now.pred = null;
+        checkState(now.status.compareAndSet(Node.NodeStatus.PENDING, Node.NodeStatus.HOLDING)
+                || now.status.compareAndSet(Node.NodeStatus.PENDING_NEED_UNPARK, Node.NodeStatus.HOLDING_NEED_UNPARK));
     }
 
     @Override
@@ -93,7 +167,20 @@ public class LocalCLHLock implements Lock {
 
     @Override
     public void unlock() {
+        Node n = tryResolveFromThreadLocal();
 
+        if (n.status.compareAndSet(Node.NodeStatus.HOLDING, Node.NodeStatus.RELEASED)) {
+            MultiThreadDebugger.log("lock released :y0! ");
+        } else if (n.status.compareAndSet(Node.NodeStatus.HOLDING_NEED_UNPARK, Node.NodeStatus.RELEASED)) {
+            LockSupport.unpark(n.next.holdThread);
+            MultiThreadDebugger.log("lock released :y1! ");
+        } else {
+            MultiThreadDebugger.error("error branch!");
+            throw new IllegalArgumentException("must be one branch!");
+        }
+
+        // release thread local
+        threadLocal.set(null);
     }
 
     @Override
