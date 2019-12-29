@@ -10,11 +10,11 @@ public class ZkCliTest {
     private ZkCli zkCli;
 
     @Test
-    public void createNode() throws IOException {
+    public void createNode() throws IOException, InterruptedException {
 
         zkCli = new ZkCli("118.31.4.42:2181,118.31.4.42:2182,118.31.4.42:2183");
 
-        String res = zkCli.createNode("/test", "test", null, CreateMode.EPHEMERAL);
+        String res = zkCli.createNode("/test", "test", null, CreateMode.EPHEMERAL_SEQUENTIAL);
 
         System.out.println(res);
 
