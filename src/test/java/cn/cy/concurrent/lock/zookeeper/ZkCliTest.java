@@ -3,6 +3,7 @@ package cn.cy.concurrent.lock.zookeeper;
 import java.io.IOException;
 
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.ZooDefs;
 import org.junit.Test;
 
 public class ZkCliTest {
@@ -10,13 +11,10 @@ public class ZkCliTest {
     private ZkCli zkCli;
 
     @Test
-    public void createNode() throws IOException, InterruptedException {
+    public void testAccess() throws IOException, InterruptedException {
 
-        zkCli = new ZkCli("118.31.4.42:2181,118.31.4.42:2182,118.31.4.42:2183");
+        zkCli = new ZkCli("118.31.4.42:2181");
 
-        String res = zkCli.createNode("/test", "test", null, CreateMode.EPHEMERAL_SEQUENTIAL);
-
-        System.out.println(res);
-
+        zkCli.createNode("/test1", "data1", ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
     }
 }

@@ -63,6 +63,8 @@ public class DistributedZkLock implements Lock {
             String thisPath = zkCli.createNode("/", zkCli.getUuid(), ZooDefs.Ids.OPEN_ACL_UNSAFE,
                     CreateMode.EPHEMERAL_SEQUENTIAL);
 
+            logger.info("acquired into queue, thisPath:{}", thisPath);
+
             if (thisPath == null) {
                 logger.warn("create path : {} failed ! ", zkCli.getUuid());
                 return false;
@@ -73,12 +75,16 @@ public class DistributedZkLock implements Lock {
 
             // 异常, 当做没有抢到
             if (children == null) {
-                logger.warn("uuid : {}, getChildren method error ! ");
+                logger.warn("uuid : {}, getChildren method error ! ", zkCli.getUuid());
                 return false;
             }
 
             // 查看自己所处位置
             Integer thisPathIndex = children.indexOf(thisPath);
+
+            if (logger.isDebugEnabled()) {
+                logger.debug("childeren list : {}", children);
+            }
 
             // 理论上不会出现这种情况
             if (thisPathIndex == -1) {
@@ -86,7 +92,31 @@ public class DistributedZkLock implements Lock {
                 return false;
             }
 
-            return super.tryAcquire(arg);
+            // 如果是第一个, 就直接拿到锁了
+            if (thisPathIndex == 0) {
+                logger.debug("acquired the lock! uuid : {}", zkCli.getUuid());
+                return true;
+            }
+
+            Integer attachTarget = thisPathIndex - 1;
+            while (true) {
+                // 如果不是第一个, 监听 index-1 位置的元素
+                boolean exist = zkCli.attachWatcher(children.get(attachTarget), watchedEvent -> {
+                    // todo
+                });
+
+                // 如果这个元素不存在了
+                if (!exist) {
+                    // 第0个元素还不存在, 就是获取到了
+                    if (attachTarget == 0) {
+                        return true;
+                    } else {
+                        attachTarget--;
+                    }
+                } else {
+                    return false;
+                }
+            }
         }
 
         @Override

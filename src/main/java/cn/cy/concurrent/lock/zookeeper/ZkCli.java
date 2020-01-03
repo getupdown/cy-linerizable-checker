@@ -11,6 +11,7 @@ import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.ACL;
+import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,6 +68,19 @@ public class ZkCli {
         } catch (InterruptedException e) {
             logger.warn("create operation interrupted!");
             return null;
+        }
+    }
+
+    public boolean attachWatcher(String path, Watcher watcher) {
+        try {
+            Stat stat = zooKeeper.exists(path, watcher);
+            return stat != null;
+        } catch (KeeperException e) {
+            logger.error("keeperException occurred ! path: {}, results: {}", e.getPath(), e.getResults(), e);
+            return false;
+        } catch (InterruptedException e) {
+            logger.warn("attach watcher interrupted!");
+            return false;
         }
     }
 
