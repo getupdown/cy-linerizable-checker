@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory;
 
 import com.alibaba.fastjson.JSON;
 
+import cn.cy.concurrent.util.PathUtil;
+
 public class ZkCli {
 
     public static final Logger logger = LoggerFactory.getLogger(ZkCli.class);
@@ -42,7 +44,7 @@ public class ZkCli {
     }
 
     public ZkCli(String ipList) throws IOException, InterruptedException {
-        zooKeeper = new ZooKeeper(ipList, 5000, new CommonWatcher());
+        zooKeeper = new ZooKeeper(ipList, 600000, new CommonWatcher());
         uuid = generateUUId();
         START_SEMAPHORE.acquire();
     }
@@ -56,6 +58,16 @@ public class ZkCli {
         } catch (InterruptedException e) {
             logger.warn("create operation interrupted!");
             return null;
+        }
+    }
+
+    public void removeNode(String path, int expectedVersion) {
+        try {
+            zooKeeper.delete(path, expectedVersion);
+        } catch (InterruptedException e) {
+            logger.warn("delete operation interrupted!");
+        } catch (KeeperException e) {
+            logger.error("keeperException occurred ! path: {}, results: {}", e.getPath(), e.getResults(), e);
         }
     }
 
@@ -86,5 +98,29 @@ public class ZkCli {
 
     public String getUuid() {
         return uuid;
+    }
+
+    /**
+     * for debug
+     * <p>
+     * begin
+     */
+    public void clearTree(String rootPath) {
+        try {
+            List<String> children = zooKeeper.getChildren(rootPath, null);
+
+            if (children.size() == 0) {
+                return;
+            }
+
+            for (String child : children) {
+                clearTree(PathUtil.concatPath(rootPath, child));
+                zooKeeper.delete(PathUtil.concatPath(rootPath, child), -1);
+            }
+
+        } catch (KeeperException e) {
+            logger.error("keeper Exception occurred on {}", rootPath);
+        } catch (InterruptedException e) {
+        }
     }
 }
