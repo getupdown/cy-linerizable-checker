@@ -17,13 +17,13 @@ import com.google.common.collect.Lists;
 
 public class ZkCliTest {
 
-    private static final String BASE_PATH = "/zkCliTest";
+    public static final String BASE_PATH = "/zkCliTest";
 
-    private static ZkCli zkCli;
+    public static ZkCli zkCli;
 
     static {
         try {
-            zkCli = new ZkCli("118.31.4.42:2181" + BASE_PATH);
+            zkCli = new ZkCli("118.31.4.42:2182" + BASE_PATH);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
@@ -124,11 +124,32 @@ public class ZkCliTest {
      * zkClient同时连 L1 F1 F2
      * 连着的那个挂掉
      * 然后看是否会重连其他的
+     * <p>
+     * 结论: 会重连其他的
      */
     @Test
     public void testMultiClient() throws IOException, InterruptedException {
         zkCli = new ZkCli("118.31.4.42:2181,118.31.4.42:2182,118.31.4.42:2183");
 
         zkCli.attachWatcher("/", null);
+    }
+
+    @Test
+    public void testAttachOnNotExist() throws IOException, InterruptedException {
+        Assert.assertFalse(zkCli.attachWatcher("/test", null));
+    }
+
+    @Test
+    public void testAttachOnExistingNode() {
+
+        zkCli.createNode("/testExist", "test", ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+
+        Assert.assertTrue(zkCli.attachWatcher("/testExist", null));
+
+    }
+
+    @Test
+    public void testSyncBySync() throws InterruptedException {
+        zkCli.syncBySync("/");
     }
 }

@@ -3,8 +3,10 @@ package cn.cy.concurrent.lock.zookeeper;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
 
+import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
@@ -86,6 +88,7 @@ public class ZkCli {
     public boolean attachWatcher(String path, Watcher watcher) {
         try {
             Stat stat = zooKeeper.exists(path, watcher);
+            logger.info("stat res is : {}", JSON.toJSONString(stat));
             return stat != null;
         } catch (KeeperException e) {
             logger.error("keeperException occurred ! path: {}, results: {}", e.getPath(), e.getResults(), e);
@@ -94,6 +97,38 @@ public class ZkCli {
             logger.warn("attach watcher interrupted!");
             return false;
         }
+    }
+
+    public void delete(String node) {
+        try {
+            zooKeeper.delete(node, -1);
+        } catch (InterruptedException e) {
+            logger.warn("delete node : {} is interrupted", node);
+        } catch (KeeperException e) {
+            logger.error("keeperException occurred ! path: {}, results: {}", e.getPath(), e.getResults(), e);
+        }
+    }
+
+    /**
+     * synchronous sync operation
+     *
+     * @param path
+     */
+    public void syncBySync(final String path) throws InterruptedException {
+
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+
+        zooKeeper.sync(path, new AsyncCallback.VoidCallback() {
+            @Override
+            public void processResult(int rc, String path, Object ctx) {
+                logger.info("sync operation return! result code is : {}", rc);
+                countDownLatch.countDown();
+            }
+        }, null);
+
+        logger.info("sync operation count down!");
+        countDownLatch.await();
+        logger.info("sync operation count down success!");
     }
 
     public String getUuid() {
