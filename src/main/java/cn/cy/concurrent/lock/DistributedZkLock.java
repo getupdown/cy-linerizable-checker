@@ -25,16 +25,16 @@ public class DistributedZkLock implements DistributeLock {
 
     public static final String ZK_NODE_ROOT = "lock";
 
-    /**
-     * 基于AQS实现锁对象
-     */
-
     private ZkCli zkCli;
 
     private ThreadLocal<String> nodeOnZkTree = new ThreadLocal<>();
 
     public DistributedZkLock(String ipList) throws IOException, InterruptedException {
-        zkCli = new ZkCli(ipList);
+        zkCli = new ZkCli(ipList, ZK_NODE_ROOT);
+    }
+
+    private String getLockPathPrefix() {
+        return "/" + ZK_NODE_ROOT;
     }
 
     /**
@@ -68,15 +68,15 @@ public class DistributedZkLock implements DistributeLock {
     private boolean acquire0() throws InterruptedException {
 
         // createNode : 首先创建节点
-        String node = zkCli.createNode("/" + ZK_NODE_ROOT, zkCli.getUuid(), ZooDefs.Ids.OPEN_ACL_UNSAFE,
+        String path = zkCli.createNode(getLockPathPrefix() + "/lock-", zkCli.getUuid(), ZooDefs.Ids.OPEN_ACL_UNSAFE,
                 CreateMode.EPHEMERAL_SEQUENTIAL);
 
-        if (node == null) {
+        if (path == null) {
             logger.error("node create failed!");
             return false;
         }
 
-        node = node.substring(1);
+        String node = path.substring(path.lastIndexOf("/") + 1);
 
         nodeOnZkTree.set(node);
 
@@ -85,7 +85,7 @@ public class DistributedZkLock implements DistributeLock {
         // 自旋判断
         while (true) {
             // 查询子节点所在的下标
-            Integer indexOfChildren = queryChildIndexWithSync(node, "/", 3, childrenList);
+            Integer indexOfChildren = queryChildIndexWithSync(node, getLockPathPrefix(), 3, childrenList);
 
             Preconditions.checkNotNull(indexOfChildren);
 
@@ -100,7 +100,7 @@ public class DistributedZkLock implements DistributeLock {
                 // 监听前驱节点
                 // 如果前驱不存在了, 则重复查找, 直到查找到前驱节点或者自己成为第一个
                 while (!attachRes) {
-                    indexOfChildren = queryChildIndexWithSync(node, "/", 3, childrenList);
+                    indexOfChildren = queryChildIndexWithSync(node, getLockPathPrefix(), 3, childrenList);
 
                     if (indexOfChildren == 0) {
                         onAcquireLock(Thread.currentThread());
@@ -108,7 +108,8 @@ public class DistributedZkLock implements DistributeLock {
                     }
 
                     String preNode = childrenList.get(indexOfChildren - 1);
-                    attachRes = zkCli.attachWatcher("/" + preNode, new TryingAcquireWatcher(Thread.currentThread()));
+                    attachRes = zkCli.attachWatcher(getLockPathPrefix() + "/" + preNode,
+                            new TryingAcquireWatcher(Thread.currentThread()));
                 }
 
                 LockSupport.parkNanos(this, TimeUnit.SECONDS.toNanos(10));
@@ -190,6 +191,6 @@ public class DistributedZkLock implements DistributeLock {
 
     @Override
     public void release() {
-        zkCli.delete(nodeOnZkTree.get());
+        zkCli.delete(getLockPathPrefix() + "/" + nodeOnZkTree.get());
     }
 }

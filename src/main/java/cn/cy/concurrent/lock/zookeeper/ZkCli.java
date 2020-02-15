@@ -11,6 +11,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooDefs;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
@@ -49,6 +50,23 @@ public class ZkCli {
         zooKeeper = new ZooKeeper(ipList, 600000, new CommonWatcher());
         uuid = generateUUId();
         START_SEMAPHORE.acquire();
+    }
+
+    public ZkCli(String ipList, String ensureRootPath) throws IOException, InterruptedException {
+
+        this(ipList);
+        try {
+            String res = zooKeeper
+                    .create("/" + ensureRootPath, "".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+            logger.info("res : {}", res);
+        } catch (KeeperException e) {
+            if (e.code() == KeeperException.Code.NODEEXISTS) {
+                logger.info(" node exists yet ! ");
+            } else {
+                logger.error("other error occurred ! ", e);
+                throw new RuntimeException();
+            }
+        }
     }
 
     public String createNode(String path, String data, List<ACL> aclList, CreateMode createMode) {
