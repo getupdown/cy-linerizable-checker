@@ -23,7 +23,7 @@
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <!-- 归档文件名“.zip或.gz结尾”,表示归档文件自动压缩 -->
             <FileNamePattern>./my_log%d{yyyyMMdd}.log.zip</FileNamePattern>
-            <maxHistory>30</maxHistory>
+            <maxHistory>0</maxHistory>
         </rollingPolicy>
 
         <!--rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
@@ -61,6 +61,6 @@
     <!-- 至多只能配置一个root -->
     <root level="debug">
         <appender-ref ref="STDOUT"/>
-        <!--<appender-ref ref="FILE" />-->
+        <appender-ref ref="FILE"/>
     </root>
 </configuration>

@@ -1,7 +1,5 @@
 package cn.cy.concurrent.lock;
 
-import static cn.cy.concurrent.lock.zookeeper.ZkCliTest.BASE_PATH;
-
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -19,10 +17,15 @@ public class DistributedZkLockTest {
 
     private ExecutorService executorService = Executors.newFixedThreadPool(2);
 
+    /**
+     * @throws IOException
+     * @throws InterruptedException
+     */
     @Test
     public void acquire() throws IOException, InterruptedException {
 
-        DistributedZkLock distributedZkLock = new DistributedZkLock("118.31.4.42:2182" + BASE_PATH);
+        DistributedZkLock distributedZkLock = new DistributedZkLock("118.31.4.42:2182" + ",118.31.4"
+                + ".42:2181");
 
         executorService.submit(() -> {
             try {
@@ -33,6 +36,8 @@ public class DistributedZkLockTest {
             }
         });
 
+        System.out.println("xxxx");
+
         executorService.submit(() -> {
             try {
                 distributedZkLock.acquire();
@@ -42,6 +47,6 @@ public class DistributedZkLockTest {
             }
         });
 
-        Thread.sleep(60000);
+        Thread.sleep(120000);
     }
 }

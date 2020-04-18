@@ -23,7 +23,7 @@ public class ZkCliTest {
 
     static {
         try {
-            zkCli = new ZkCli("118.31.4.42:2182" + BASE_PATH);
+            zkCli = new ZkCli("118.31.4.42:2182", BASE_PATH);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
@@ -129,7 +129,7 @@ public class ZkCliTest {
      */
     @Test
     public void testMultiClient() throws IOException, InterruptedException {
-        zkCli = new ZkCli("118.31.4.42:2181,118.31.4.42:2182,118.31.4.42:2183");
+        zkCli = new ZkCli("118.31.4.42:2181,118.31.4.42:2182,118.31.4.42:2183", "/");
 
         zkCli.attachWatcher("/", null);
     }

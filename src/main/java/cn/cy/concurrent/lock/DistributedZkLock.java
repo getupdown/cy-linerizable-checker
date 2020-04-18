@@ -1,6 +1,8 @@
 package cn.cy.concurrent.lock;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
@@ -65,16 +67,11 @@ public class DistributedZkLock implements DistributeLock {
      *
      * @return
      */
-    private boolean acquire0() throws InterruptedException {
+    private void acquire0() throws InterruptedException {
 
         // createNode : 首先创建节点
         String path = zkCli.createNode(getLockPathPrefix() + "/lock-", zkCli.getUuid(), ZooDefs.Ids.OPEN_ACL_UNSAFE,
                 CreateMode.EPHEMERAL_SEQUENTIAL);
-
-        if (path == null) {
-            logger.error("node create failed!");
-            return false;
-        }
 
         String node = path.substring(path.lastIndexOf("/") + 1);
 
@@ -91,8 +88,8 @@ public class DistributedZkLock implements DistributeLock {
 
             if (indexOfChildren == 0) {
                 // 如果获取到锁了, 直接返回
-                onAcquireLock(Thread.currentThread());
-                return true;
+                onAcquireLock(Thread.currentThread(), node);
+                return;
             } else {
                 // 如果没有获取到
                 logger.debug("not acquired, begin to attach pred node");
@@ -102,12 +99,12 @@ public class DistributedZkLock implements DistributeLock {
                 while (!attachRes) {
                     indexOfChildren = queryChildIndexWithSync(node, getLockPathPrefix(), 3, childrenList);
 
-                    if (indexOfChildren == 0) {
-                        onAcquireLock(Thread.currentThread());
-                        return true;
+                    if (indexOfChildren == childrenList.size() - 1) {
+                        onAcquireLock(Thread.currentThread(), node);
+                        return;
                     }
 
-                    String preNode = childrenList.get(indexOfChildren - 1);
+                    String preNode = childrenList.get(indexOfChildren + 1);
                     attachRes = zkCli.attachWatcher(getLockPathPrefix() + "/" + preNode,
                             new TryingAcquireWatcher(Thread.currentThread()));
                 }
@@ -120,8 +117,12 @@ public class DistributedZkLock implements DistributeLock {
         }
     }
 
-    protected void onAcquireLock(Thread thread) {
-        logger.debug("acquire lock!");
+    protected void onAcquireLock(Thread thread, String node) {
+        logger.info("thread : {} , uuid : {}, node : {} , acquire lock!", thread.getId(), zkCli.getUuid(), node);
+    }
+
+    protected void onReleaseLock(Thread thread, String node) {
+        logger.info("thread : {} , uuid : {}, node : {} , release lock!", thread.getId(), zkCli.getUuid(), node);
     }
 
     /**
@@ -159,7 +160,11 @@ public class DistributedZkLock implements DistributeLock {
 
             List<String> children = zkCli.getChildren(path, null);
 
-            logger.debug("path : {} , childrenList : {}", path, children);
+            List<String> reversedOne = new ArrayList<>(children);
+
+            Collections.reverse(reversedOne);
+
+            logger.debug("path : {} , childrenList : {}", path, reversedOne);
 
             // 如果 createNode 和 getChildren打到同一台zk实例上, 根据%1, 一定有子节点
             Integer indexOfChildren = children.indexOf(targetNode);
@@ -181,7 +186,13 @@ public class DistributedZkLock implements DistributeLock {
 
     @Override
     public void acquire() throws InterruptedException {
-        acquire0();
+        try {
+            acquire0();
+        } catch (Exception e) {
+            // 任何异常都直接关闭cli, 防止泄露, 导致无法释放节点
+            zkCli.close();
+            throw e;
+        }
     }
 
     @Override
@@ -192,5 +203,6 @@ public class DistributedZkLock implements DistributeLock {
     @Override
     public void release() {
         zkCli.delete(getLockPathPrefix() + "/" + nodeOnZkTree.get());
+        onReleaseLock(Thread.currentThread(), nodeOnZkTree.get());
     }
 }

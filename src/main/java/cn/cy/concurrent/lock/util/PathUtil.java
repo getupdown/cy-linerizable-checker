@@ -1,4 +1,4 @@
-package cn.cy.concurrent.util;
+package cn.cy.concurrent.lock.util;
 
 import org.apache.commons.lang3.StringUtils;
 
