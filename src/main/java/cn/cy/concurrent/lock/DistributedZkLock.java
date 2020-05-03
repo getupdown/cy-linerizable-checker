@@ -68,7 +68,6 @@ public class DistributedZkLock implements DistributeLock {
     private void acquire0() throws InterruptedException {
 
         // createNode : 首先创建节点
-        // todo 我真是蒙圈了, 到底是前插还是后插?
         String path = zkCli.createNode(getLockPathPrefix() + "/lock-", zkCli.getUuid(), ZooDefs.Ids.OPEN_ACL_UNSAFE,
                 CreateMode.EPHEMERAL_SEQUENTIAL);
 
