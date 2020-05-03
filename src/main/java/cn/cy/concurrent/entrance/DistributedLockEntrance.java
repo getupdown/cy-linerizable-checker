@@ -18,7 +18,7 @@ public class DistributedLockEntrance {
 
     public static void main(String[] args) throws IOException, InterruptedException {
 
-        int n = 10;
+        int n = 3;
 
         ExecutorService executorService = Executors.newFixedThreadPool(n);
 
@@ -27,7 +27,7 @@ public class DistributedLockEntrance {
             executorService.submit(() -> {
                 DistributedZkLock distributedZkLock = null;
                 try {
-                    distributedZkLock = new DistributedZkLock("118.31.4.42:2182,118.31.4.42:2183");
+                    distributedZkLock = new DistributedZkLock("118.31.4.42:2182");
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (InterruptedException e) {

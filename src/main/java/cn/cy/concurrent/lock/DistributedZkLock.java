@@ -1,8 +1,6 @@
 package cn.cy.concurrent.lock;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
@@ -70,6 +68,7 @@ public class DistributedZkLock implements DistributeLock {
     private void acquire0() throws InterruptedException {
 
         // createNode : 首先创建节点
+        // todo 我真是蒙圈了, 到底是前插还是后插?
         String path = zkCli.createNode(getLockPathPrefix() + "/lock-", zkCli.getUuid(), ZooDefs.Ids.OPEN_ACL_UNSAFE,
                 CreateMode.EPHEMERAL_SEQUENTIAL);
 
@@ -99,12 +98,12 @@ public class DistributedZkLock implements DistributeLock {
                 while (!attachRes) {
                     indexOfChildren = queryChildIndexWithSync(node, getLockPathPrefix(), 3, childrenList);
 
-                    if (indexOfChildren == childrenList.size() - 1) {
+                    if (indexOfChildren == 0) {
                         onAcquireLock(Thread.currentThread(), node);
                         return;
                     }
 
-                    String preNode = childrenList.get(indexOfChildren + 1);
+                    String preNode = childrenList.get(indexOfChildren - 1);
                     attachRes = zkCli.attachWatcher(getLockPathPrefix() + "/" + preNode,
                             new TryingAcquireWatcher(Thread.currentThread()));
                 }
@@ -118,11 +117,11 @@ public class DistributedZkLock implements DistributeLock {
     }
 
     protected void onAcquireLock(Thread thread, String node) {
-        logger.info("thread : {} , uuid : {}, node : {} , acquire lock!", thread.getId(), zkCli.getUuid(), node);
+        logger.info("thread: {} , uuid: {}, node: {} , acquire lock!", thread.getId(), zkCli.getUuid(), node);
     }
 
     protected void onReleaseLock(Thread thread, String node) {
-        logger.info("thread : {} , uuid : {}, node : {} , release lock!", thread.getId(), zkCli.getUuid(), node);
+        logger.info("thread: {} , uuid: {}, node: {} , release lock!", thread.getId(), zkCli.getUuid(), node);
     }
 
     /**
@@ -160,11 +159,11 @@ public class DistributedZkLock implements DistributeLock {
 
             List<String> children = zkCli.getChildren(path, null);
 
-            List<String> reversedOne = new ArrayList<>(children);
+            // 由于zk的服务端是使用hashSet来存储所有孩子节点的
+            // 所以为了防止出现各个节点hashSet返回的列表顺序不一致(未确认), 再加上不要这么反直觉————这里做个排序
+            children.sort(String::compareTo);
 
-            Collections.reverse(reversedOne);
-
-            logger.debug("path : {} , childrenList : {}", path, reversedOne);
+            logger.debug("path : {} , childrenList : {}", path, children);
 
             // 如果 createNode 和 getChildren打到同一台zk实例上, 根据%1, 一定有子节点
             Integer indexOfChildren = children.indexOf(targetNode);
