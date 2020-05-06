@@ -3,7 +3,6 @@ package cn.cy.network;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -13,7 +12,7 @@ import java.util.concurrent.Executors;
 /**
  * 简单echo服务器
  */
-public class EchoServer {
+public class SimpleEchoServer {
 
     public static void main(String[] args) throws IOException {
 
@@ -21,7 +20,7 @@ public class EchoServer {
 
         ServerSocket serverSocket = new ServerSocket();
 
-        serverSocket.bind(new InetSocketAddress(InetAddress.getLocalHost(), 8080));
+        serverSocket.bind(new InetSocketAddress("127.0.0.1", 8081));
 
         while (true) {
             Socket socket = serverSocket.accept();
@@ -41,13 +40,13 @@ public class EchoServer {
                         if (n > 0) {
                             // write back
                             cnt++;
-                            if (cnt == 5) {
-                                // server shutdown the write
-                                System.out.println("server close the connection");
-                                socket.close();
-                                break;
-                            }
-                            System.out.println("write back!");
+                            //                            if (cnt == 5) {
+                            //                                // server shutdown the write
+                            //                                System.out.println("server close the connection");
+                            //                                socket.close();
+                            //                                break;
+                            //                            }
+                            System.out.println("write back! " + new String(bytes));
                             OutputStream outputStream = socket.getOutputStream();
                             outputStream.write(bytes);
                             outputStream.flush();
@@ -75,6 +74,6 @@ public class EchoServer {
     }
 
     private static class Worker {
-        
+
     }
 }

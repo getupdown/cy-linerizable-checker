@@ -1,5 +1,7 @@
 package cn.cy.network.echo.server;
 
+import cn.cy.proxy.core.ConfigurableAddressDispatcher;
+import cn.cy.proxy.handler.ConnectionEventHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelInitializer;
@@ -9,14 +11,14 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 
-public class EchoServer {
+public class EchoProxy {
     private int port;
 
-    public EchoServer(int port) {
+    public EchoProxy(int port) {
         this.port = port;
     }
 
-    public void run() throws Exception {
+    public void server2Downstream() throws Exception {
         EventLoopGroup bossGroup = new NioEventLoopGroup(); // (1)
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
@@ -26,7 +28,7 @@ public class EchoServer {
                     .childHandler(new ChannelInitializer<SocketChannel>() { // (4)
                         @Override
                         public void initChannel(SocketChannel ch) throws Exception {
-                            ch.pipeline().addLast(new EchoServerHandler());
+                            ch.pipeline().addLast(new ConnectionEventHandler(new ConfigurableAddressDispatcher()));
                         }
                     })
                     .option(ChannelOption.SO_BACKLOG, 128)          // (5)
@@ -51,6 +53,7 @@ public class EchoServer {
             port = Integer.parseInt(args[0]);
         }
 
-        new EchoServer(port).run();
+        EchoProxy proxy = new EchoProxy(port);
+        proxy.server2Downstream();
     }
 }

@@ -27,7 +27,7 @@ public class DistributedLockEntrance {
             executorService.submit(() -> {
                 DistributedZkLock distributedZkLock = null;
                 try {
-                    distributedZkLock = new DistributedZkLock("118.31.4.42:2182");
+                    distributedZkLock = new DistributedZkLock("127.0.0.1:8080");
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (InterruptedException e) {
@@ -36,7 +36,6 @@ public class DistributedLockEntrance {
                 for (int j = 0; j < 1000; j++) {
                     try {
                         distributedZkLock.acquire();
-
                     } catch (InterruptedException e) {
                         // acquire
                     } finally {
