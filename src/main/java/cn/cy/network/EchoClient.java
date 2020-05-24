@@ -1,12 +1,14 @@
 package cn.cy.network;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.List;
 import java.util.Scanner;
+
+import com.google.common.collect.Lists;
+import com.google.common.primitives.Bytes;
 
 /**
  * echo client
@@ -15,67 +17,76 @@ public class EchoClient {
 
     public static void main(String[] args) throws IOException {
 
-        System.out.println();
-
-        SocketChannel socketChannel = SocketChannel.open(new InetSocketAddress("127.0.0.1", 8080));
+        SocketChannel socketChannel = SocketChannel.open(new InetSocketAddress("127.0.0.1", 8081));
 
         while (true) {
 
             Scanner scanner = new Scanner(System.in);
 
-            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(1024);
+            Integer batchSize = 1024;
+
+            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(batchSize);
 
             while (scanner.hasNext()) {
-                String x = scanner.next();
-                byteBuffer = byteBuffer.put(x.getBytes());
+                String x = scanner.next() + "\n";
 
-                byteBuffer.flip();
+                byte[] byteArray = x.getBytes();
 
-                socketChannel.write(byteBuffer);
+                int nowPt = 0;
 
-                socketChannel.read(byteBuffer);
+                while (nowPt < byteArray.length) {
 
-                byteBuffer.clear();
+                    int next = Math.min(nowPt + batchSize, byteArray.length);
 
-                Boolean hasReadEof = false;
-            }
-        }
-    }
+                    // 首先使用buffer的输入模式进行输入, 并且flip成输出模式
+                    byteBuffer.put(byteArray, nowPt, next - nowPt).flip();
 
-    public void achrive() throws IOException {
-        Socket socket = new Socket();
-        socket.setTcpNoDelay(true);
-        socket.bind(null);
-        socket.connect(new InetSocketAddress(InetAddress.getLocalHost(), 8080));
-
-        while (true) {
-            Scanner scanner = new Scanner(System.in);
-
-            while (scanner.hasNext()) {
-                String x = scanner.next();
-
-                try {
-                    socket.getOutputStream().write(x.getBytes());
-
-                    byte[] bytes = new byte[4096];
-                    System.out.println("init!");
-
-                    int n = socket.getInputStream().read(bytes);
-
-                    System.out.println("read " + n);
-
-                    if (n > 0) {
-                        System.out.println(new String(bytes));
-                    } else if (n == 0) {
-                        System.out.println("client received 0!");
-                    } else {
-                        System.out.println("client received error!");
+                    // buffer输出到channel里
+                    int writeCnt = socketChannel.write(byteBuffer);
+                    if (writeCnt == 0) {
+                        System.out.println("write over?");
+                        byteBuffer.clear();
+                        break;
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
+                    byteBuffer.clear();
+                    nowPt = next;
                 }
+
+                boolean readOver = false;
+
+                List<Byte> bytes = Lists.newArrayList();
+
+                while (!readOver) {
+
+                    // buffer的输入模式, buffer从channel输入
+                    int readCnt = socketChannel.read(byteBuffer);
+
+                    System.out.println("read cnt " + readCnt);
+
+                    if (readCnt == 0) {
+                        readOver = true;
+                        System.out.println("read return 0");
+                        break;
+                    }
+
+                    // flip成输出模式
+                    byteBuffer.flip();
+
+                    // buffer输出
+                    for (int i = 0; i < readCnt; i++) {
+                        byte b = byteBuffer.get();
+                        if (b == '\n') {
+                            readOver = true;
+                            break;
+                        }
+                        bytes.add(b);
+                    }
+
+                    byteBuffer.clear();
+                }
+
+                System.out.println(new String(Bytes.toArray(bytes)));
             }
         }
     }
-
 }
