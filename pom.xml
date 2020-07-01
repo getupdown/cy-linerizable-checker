@@ -10,7 +10,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <log4j.version>2.11.1</log4j.version>
+        <log4j.version>2.13.3</log4j.version>
         <snakeyml.version>1.17</snakeyml.version>
         <jacksondatabind.version>2.10.0.pr2</jacksondatabind.version>
         <fastjson.version>1.2.47</fastjson.version>
