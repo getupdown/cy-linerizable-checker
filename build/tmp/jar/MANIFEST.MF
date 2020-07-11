@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Implementation-Title: concurrent-practice
+Implementation-Version: 1.0-SNAPSHOT
+Main-Class: cn.cy.network.SimpleEchoServer
+

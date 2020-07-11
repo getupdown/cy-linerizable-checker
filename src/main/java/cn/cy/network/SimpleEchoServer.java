@@ -1,13 +1,12 @@
 package cn.cy.network;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
+import java.util.Set;
 
 /**
  * 简单echo服务器
@@ -16,64 +15,43 @@ public class SimpleEchoServer {
 
     public static void main(String[] args) throws IOException {
 
-        ExecutorService executorService = Executors.newFixedThreadPool(50);
+        Selector selector = Selector.open();
+        ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
+        serverSocketChannel.configureBlocking(false);
+        serverSocketChannel.bind(new InetSocketAddress(8081));
 
-        ServerSocket serverSocket = new ServerSocket();
-
-        serverSocket.bind(new InetSocketAddress("127.0.0.1", 8081));
+        SelectionKey selectionKey = serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
 
         while (true) {
-            Socket socket = serverSocket.accept();
 
-            System.out.println("received new connection! socket" + socket.toString());
+            selector.select();
 
-            executorService.submit(() -> {
-                int cnt = 0;
-                while (true) {
-                    try {
-                        InputStream inputStream = socket.getInputStream();
+            Set<SelectionKey> selectionKeys = selector.selectedKeys();
 
-                        byte[] bytes = new byte[4096];
+            for (SelectionKey selectedKey : selectionKeys) {
 
-                        int n = inputStream.read(bytes);
+                if (selectedKey.isAcceptable()) {
+                    SocketChannel socketChannel = ((ServerSocketChannel) selectedKey.channel()).accept();
+                    socketChannel.configureBlocking(false);
+                    socketChannel
+                            .register(selector, SelectionKey.OP_READ, new SocketDescriptor(socketChannel, selector));
+                }
 
-                        if (n > 0) {
-                            // write back
-                            cnt++;
-                            //                            if (cnt == 5) {
-                            //                                // server shutdown the write
-                            //                                System.out.println("server close the connection");
-                            //                                socket.close();
-                            //                                break;
-                            //                            }
-                            System.out.println("write back! " + new String(bytes));
-                            OutputStream outputStream = socket.getOutputStream();
-                            outputStream.write(bytes);
-                            outputStream.flush();
-                        } else if (n == 0) {
-
-                            // closed by
-                            System.out.println("client closed!");
-                            socket.close();
-
-                        } else {
-
-                            // error
-                            System.out.println("client error!");
-
-                        }
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        break;
+                if (selectedKey.isReadable()) {
+                    SocketDescriptor socketDescriptor = (SocketDescriptor) selectedKey.attachment();
+                    SocketChannel readableByteChannel = (SocketChannel) selectedKey.channel();
+                    boolean consumeOver = socketDescriptor.consumeInput(readableByteChannel);
+                    if (consumeOver) {
+                        readableByteChannel.register(selector, SelectionKey.OP_WRITE);
                     }
                 }
 
-            });
+                if (selectionKey.isWritable()) {
+                    SocketDescriptor socketDescriptor = (SocketDescriptor) selectedKey.attachment();
+                }
+
+                selectionKeys.remove(selectedKey);
+            }
         }
-    }
-
-    private static class Worker {
-
     }
 }

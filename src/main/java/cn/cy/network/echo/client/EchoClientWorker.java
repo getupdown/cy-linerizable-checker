@@ -1,15 +1,14 @@
 package cn.cy.network.echo.client;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.Lists;
-import com.google.common.primitives.Bytes;
 
 /**
  * EchoClientWorker
@@ -22,7 +21,7 @@ public class EchoClientWorker implements Runnable {
 
     public EchoClientWorker(Long workerId, String ip, Integer port) throws IOException {
         this.workerId = workerId;
-        socketChannel = SocketChannel.open(new InetSocketAddress(ip, port));
+        socketChannel = SocketChannel.open(new InetSocketAddress(InetAddress.getByName(ip), port));
     }
 
     @Override
@@ -31,7 +30,7 @@ public class EchoClientWorker implements Runnable {
         OUT:
         while (true) {
             int base = 1024;
-            int len = base + ThreadLocalRandom.current().nextInt(0, 2048);
+            int len = base + ThreadLocalRandom.current().nextInt(0, 20000048);
 
             StringBuilder sb = new StringBuilder();
 
@@ -44,8 +43,6 @@ public class EchoClientWorker implements Runnable {
             Integer batchSize = 1024;
 
             ByteBuffer byteBuffer = ByteBuffer.allocateDirect(batchSize);
-
-            System.out.println(input);
 
             byte[] byteArray = input.getBytes();
 
@@ -120,14 +117,6 @@ public class EchoClientWorker implements Runnable {
                 }
 
                 byteBuffer.clear();
-            }
-
-            System.out.println(new String(Bytes.toArray(bytes)));
-
-            try {
-                TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
 
         }
