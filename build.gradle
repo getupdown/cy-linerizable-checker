@@ -33,6 +33,10 @@ dependencies {
     implementation 'org.apache.zookeeper:zookeeper:3.4.14'
     // https://mvnrepository.com/artifact/com.alibaba.csp/sentinel-core
     compile group: 'com.alibaba.csp', name: 'sentinel-core', version: '1.7.0'
+    // https://mvnrepository.com/artifact/io.dropwizard.metrics/metrics-core
+    compile group: 'io.dropwizard.metrics', name: 'metrics-core', version: '4.1.0'
+    // https://mvnrepository.com/artifact/org.apache.kafka/kafka
+    compile group: 'org.apache.kafka', name: 'kafka_2.13', version: '2.4.0'
     testImplementation 'junit:junit:4.11'
 }
 

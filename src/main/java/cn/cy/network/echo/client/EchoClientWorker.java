@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -29,22 +30,24 @@ public class EchoClientWorker implements Runnable {
 
         OUT:
         while (true) {
-            int base = 1024;
-            int len = base + ThreadLocalRandom.current().nextInt(0, 20000048);
+            int base = 0;
+            int len = base + ThreadLocalRandom.current().nextInt(0, 40);
 
             StringBuilder sb = new StringBuilder();
 
             for (int i = 0; i < len; i++) {
-                sb.append('a' + ThreadLocalRandom.current().nextInt(25));
+                sb.append('a');
             }
 
             String input = sb.toString() + "\n";
+            System.out.println(String.format("length is %d", len));
+            System.out.println(String.format("content is %s", input));
 
             Integer batchSize = 1024;
 
             ByteBuffer byteBuffer = ByteBuffer.allocateDirect(batchSize);
 
-            byte[] byteArray = input.getBytes();
+            byte[] byteArray = input.getBytes(StandardCharsets.UTF_8);
 
             int nowPt = 0;
             int writeCnt = 0;

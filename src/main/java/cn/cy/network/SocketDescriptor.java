@@ -35,7 +35,8 @@ public class SocketDescriptor {
 
         boolean preFinish = false;
 
-        readableByteChannel.read(byteBuffer);
+        int x = readableByteChannel.read(byteBuffer);
+        System.out.println(x);
         byteBuffer.flip();
 
         while (byteBuffer.hasRemaining()) {
